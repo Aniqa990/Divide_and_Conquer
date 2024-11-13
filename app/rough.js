@@ -1,20 +1,19 @@
-"use client"
+/*"use client"
 import { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 
 const duration = 1200;
 
-export default function Home() {
+export default function what() {
   const [points, setPoints] = useState([]);
   const svgRef = useRef(null);
+  const [xScale, setXScale] = useState(null);  // Add state for xScale
+  const [yScale, setYScale] = useState(null);  // Add state for yScale
   const [isPaused, setIsPaused] = useState(false);
   
   const svgWidth = 800;
   const svgHeight = 600;
-  const margin = { top: 20, right: 40, bottom: 20, left: 40 };
-
-  let xScale;
-  let yScale;
+  const margin = { top: 20, right: 50, bottom: 40, left: 50 };
 
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
@@ -29,15 +28,35 @@ export default function Home() {
           return { x, y };
         });
       setPoints(parsedPoints);
-      drawPoints(parsedPoints);
+      setScales(parsedPoints);
     };
     reader.readAsText(file);
   };
+
+  const setScales = (points) => {
+    const xExtent = d3.extent(points, d => d.x);
+    const yExtent = d3.extent(points, d => d.y);
+
+    const newXScale = d3.scaleLinear()
+      .domain([xExtent[0] - 10, xExtent[1] + 10]) // Add padding
+      .range([margin.left, svgWidth - margin.right]);
+    
+    const newYScale = d3.scaleLinear()
+      .domain([yExtent[0] - 10, yExtent[1] + 10]) // Add padding
+      .range([svgHeight - margin.bottom, margin.top]);
+
+    setXScale(newXScale);
+    setYScale(newYScale);
+
+    drawPoints(points);
+  };
   
+
   useEffect(() => {
     const svg = d3.select(svgRef.current);
     svg.append('g').attr('id', 'axes'); // For drawing axes
   }, []);
+
 
 
   const clearButtonClicked = () => {
@@ -45,152 +64,96 @@ export default function Home() {
     d3.select(svgRef.current).selectAll("*").remove();
   };
 
-  const togglePause = () => {
-    setIsPaused(!isPaused);
-  };
-
   const drawPoints = (points) => {
     const svg = d3.select(svgRef.current);
     svg.selectAll('.point').remove();
     svg.selectAll('#axes').selectAll("*").remove(); // Clear previous axes
 
-    // Get min and max values for x and y
-    const xExtent = d3.extent(points, d => d.x);
-    const yExtent = d3.extent(points, d => d.y);
+// Draw axes with tick labels
+const xAxis = d3.axisBottom(xScale).ticks(10);
+const yAxis = d3.axisLeft(yScale).ticks(10);
 
-    // Define scales
-    xScale = d3.scaleLinear()
-      .domain([xExtent[0] - 10, xExtent[1] + 10]) // Add padding
-      .range([margin.left, svgWidth - margin.right]);
+svg.select('#axes')
+.append('g')
+.attr('transform', `translate(0,${svgHeight - margin.bottom})`)
+.call(xAxis);
 
-    yScale = d3.scaleLinear()
-      .domain([yExtent[0] - 10, yExtent[1] + 10]) // Add padding
-      .range([svgHeight - margin.bottom, margin.top]);
+svg.select('#axes')
+.append('g')
+.attr('transform', `translate(${margin.left},0)`)
+.call(yAxis);
 
-    // Draw axes
-    const xAxis = d3.axisBottom(xScale);
-    const yAxis = d3.axisLeft(yScale);
 
-    svg.select('#axes')
-      .append('g')
-      .attr('transform', `translate(0,${svgHeight - margin.bottom})`)
-      .call(xAxis);
+svg.selectAll('circle')
+.data(points)
+.enter()
+.append('circle')
+.attr('cx', (d) => (d.x))
+.attr('cy', (d) => (d.y))
+.attr('r', 3)
+.attr('class', 'point')
+.attr('data-x', (d) => d.x)
+.attr('data-y', (d) => d.y)
+.on('mouseover', function(event, d) {
+  showTooltip(event, d);
+})
+.on('mouseout', hideTooltip);
+};
 
-    svg.select('#axes')
-      .append('g')
-      .attr('transform', `translate(${margin.left},0)`)
-      .call(yAxis);
+const showTooltip = (event, point) => {
+  const tooltip = d3.select('#tooltip');
+  tooltip.transition().duration(200).style('opacity', 1);
+  tooltip
+    .html(`(${point.x.toFixed(2)}, ${point.y.toFixed(2)})`) // Corrected template literals
+    .style('left', `${event.pageX + 5}px`) // Corrected template literals
+    .style('top', `${event.pageY + 5}px`); // Corrected template literals
+};
 
-    // Plot points with scaling applied
-    svg.selectAll('circle')
-      .data(points)
-      .enter()
-      .append('circle')
-      .attr('cx', (d) => xScale(d.x))
-      .attr('cy', (d) => yScale(d.y))
-      .attr('r', 3)
-      .attr('class', 'point')
-      .attr('data-x', (d) => d.x)
-      .attr('data-y', (d) => d.y)
-      .on('mouseover', function(event, d) {
-        showTooltip(event, d);
-      })
-      .on('mouseout', hideTooltip);
-  };
+const hideTooltip = () => {
+  d3.select('#tooltip').transition().duration(200).style('opacity', 0);
+};
 
-  const showTooltip = (event, point) => {
-    const tooltip = d3.select('#tooltip');
-    tooltip.transition().duration(200).style('opacity', 1);
-    tooltip
-      .html(`(${point.x.toFixed(2)}, ${point.y.toFixed(2)})`)
-      .style('left', `${event.pageX + 5}px`)
-      .style('top', `${event.pageY + 5}px`);
-  };
-
-  const hideTooltip = () => {
-    d3.select('#tooltip').transition().duration(200).style('opacity', 0);
-  };
 
   const runButtonClicked = () => {
     run();
   };
 
   const run = () => {
+    //if (!xScale || !yScale) return;
     d3.select(svgRef.current).selectAll('.pair-line').remove();
     d3.select(svgRef.current).selectAll('.division-line').remove();
     const pointsX = points.slice().sort((a, b) => a.x - b.x);
     const pointsY = points.slice().sort((a, b) => a.y - b.y);
-    closestPairRec(pointsX, pointsY, null, null);
+    closestPairRec(pointsX, pointsY, xScale, yScale, null, null);
   };
 
   const distance = (p1, p2) => Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
 
-  const drawBoundary = (x) => {
-    const xExtent = d3.extent(points, d => d.x);
-    const yExtent = d3.extent(points, d => d.y);
-        // Define scales
-        xScale = d3.scaleLinear()
-        .domain([xExtent[0] - 10, xExtent[1] + 10]) // Add padding
-        .range([margin.left, svgWidth - margin.right]);
-  
-      yScale = d3.scaleLinear()
-        .domain([yExtent[0] - 10, yExtent[1] + 10]) // Add padding
-        .range([svgHeight - margin.bottom, margin.top]);
-    // Apply the scale to the x value to get the pixel position
-    const xScaled = xScale(x);
-
-    return d3
-      .select(svgRef.current)
-      .append('line')
-      .attr('x1', xScaled)
-      .attr('y1', 0)
-      .attr('x2', xScaled)
-      .attr('y2', svgHeight)
-      .attr('class', 'division-line')
-      .attr('stroke', 'gray');
-  };
-
-  // Function to draw a pair of points with distance line
   const drawPair = (pair) => {
-    const xExtent = d3.extent(points, d => d.x);
-    const yExtent = d3.extent(points, d => d.y);
-        // Define scales
-        xScale = d3.scaleLinear()
-        .domain([xExtent[0] - 10, xExtent[1] + 10]) // Add padding
-        .range([margin.left, svgWidth - margin.right]);
-  
-      yScale = d3.scaleLinear()
-        .domain([yExtent[0] - 10, yExtent[1] + 10]) // Add padding
-        .range([svgHeight - margin.bottom, margin.top]);
-    // Scale the coordinates of the points using xScale and yScale
-    const x1 = xScale(pair[0].x);  // Map x1 to pixel value
-    const y1 = yScale(pair[0].y);  // Map y1 to pixel value
-    const x2 = xScale(pair[1].x);  // Map x2 to pixel value
-    const y2 = yScale(pair[1].y);  // Map y2 to pixel value
-
     // Calculate the distance between the two points
     const dist = Math.sqrt((pair[0].x - pair[1].x) ** 2 + (pair[0].y - pair[1].y) ** 2).toFixed(2);
-
+  
+    // Create a group element to hold the line and distance label
     const group = d3
       .select(svgRef.current)
       .append('g')
       .attr('class', 'pair-group');
-
-    // Append the line element between points
+  
+    // Append the line element to the group
     group.append('line')
-      .attr('x1', x1)
-      .attr('y1', y1)
-      .attr('x2', x2)
-      .attr('y2', y2)
+      .attr('x1', (pair[0].x))
+      .attr('y1', (pair[0].y))
+      .attr('x2', (pair[1].x))
+      .attr('y2', (pair[1].y))
       .attr('class', 'pair-line')
       .attr('stroke', 'blue')
       .attr('stroke-width', 2);
-
-    // Calculate midpoint for the distance label
-    const midX = (x1 + x2) / 2;
-    const midY = (y1 + y2) / 2;
-
-    // Append the distance label
+  
+    // Calculate the midpoint for placing the distance label
+    const midX = ((pair[0].x) + (pair[1].x)) / 2;
+    const midY = ((pair[0].y) + (pair[1].y)) / 2;
+  
+    // Append the distance text label to the group
     group.append('text')
       .attr('x', midX)
       .attr('y', midY - 5) // Position slightly above the midpoint
@@ -198,34 +161,35 @@ export default function Home() {
       .attr('text-anchor', 'middle')
       .attr('fill', 'red')
       .text(`Dist: ${dist}`);
-
+  
     return group;
   };
-
-  // Function to highlight a subproblem area
-  const highlightSubproblem = (xStart, xEnd, className) => {
-    const xExtent = d3.extent(points, d => d.x);
-    const yExtent = d3.extent(points, d => d.y);
-        // Define scales
-        xScale = d3.scaleLinear()
-        .domain([xExtent[0] - 10, xExtent[1] + 10]) // Add padding
-        .range([margin.left, svgWidth - margin.right]);
   
-      yScale = d3.scaleLinear()
-        .domain([yExtent[0] - 10, yExtent[1] + 10]) // Add padding
-        .range([svgHeight - margin.bottom, margin.top]);
-    const xStartScaled = xScale(xStart);  // Apply the scale to xStart
-    const xEndScaled = xScale(xEnd);  // Apply the scale to xEnd
+  
 
+  const highlightSubproblem = (xStart, xEnd, className) => {
     return d3
       .select(svgRef.current)
       .append('rect')
-      .attr('x', xStartScaled)
+      .attr('x', xStart)
       .attr('y', 0)
-      .attr('width', Math.max(0, xEndScaled - xStartScaled))
+      .attr('width', Math.max(0, xEnd - xStart))
       .attr('height', svgHeight)
       .attr('class', className);
   };
+
+  const drawBoundary = (x) => {
+    return d3
+      .select(svgRef.current)
+      .append('line')
+      .attr('x1', (x))
+      .attr('y1', 0)
+      .attr('x2', (x))
+      .attr('y2', svgHeight)
+      .attr('class', 'division-line')
+      .attr('stroke', 'gray');
+  };
+  
 
   const bruteForce = (points) => {
     let minDist = Infinity;
@@ -340,10 +304,13 @@ export default function Home() {
       <input type="file" onChange={handleFileUpload} />
         <button onClick={clearButtonClicked}>Clear</button>
         <button onClick={runButtonClicked}>Run</button>
-        <button onClick={togglePause}>{isPaused ? 'Resume' : 'Pause'}</button>
       </div>
       <div id="tooltip" style={{ position: 'absolute', background: 'lightgray', padding: '5px', opacity: 0 }}></div>
       <svg ref={svgRef} width={svgWidth} height={svgHeight}></svg>
     </div>
   );
 }
+
+
+
+*/
