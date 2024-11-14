@@ -1,5 +1,6 @@
 "use client"
 import { useEffect, useRef, useState } from 'react';
+import styles from '../app/ClosestPair.css';
 import * as d3 from 'd3';
 
 const duration = 1200;
@@ -29,7 +30,7 @@ export default function Home() {
           return { x, y };
         });
       setPoints(parsedPoints);
-      drawPoints(parsedPoints);
+      drawCoordinates(parsedPoints);
     };
     reader.readAsText(file);
   };
@@ -49,7 +50,7 @@ export default function Home() {
     setIsPaused(!isPaused);
   };
 
-  const drawPoints = (points) => {
+  const drawCoordinates = (points) => {
     const svg = d3.select(svgRef.current);
     svg.selectAll('.point').remove();
     svg.selectAll('#axes').selectAll("*").remove(); // Clear previous axes
@@ -112,16 +113,13 @@ export default function Home() {
   };
 
   const runButtonClicked = () => {
-    run();
-  };
-
-  const run = () => {
     d3.select(svgRef.current).selectAll('.pair-line').remove();
     d3.select(svgRef.current).selectAll('.division-line').remove();
     const pointsX = points.slice().sort((a, b) => a.x - b.x);
     const pointsY = points.slice().sort((a, b) => a.y - b.y);
     closestPairRec(pointsX, pointsY, null, null);
   };
+
 
   const distance = (p1, p2) => Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
 
@@ -151,7 +149,7 @@ export default function Home() {
   };
 
   // Function to draw a pair of points with distance line
-  const drawPair = (pair) => {
+  const findDistance = (pair) => {
     const xExtent = d3.extent(points, d => d.x);
     const yExtent = d3.extent(points, d => d.y);
         // Define scales
@@ -183,7 +181,6 @@ export default function Home() {
       .attr('x2', x2)
       .attr('y2', y2)
       .attr('class', 'pair-line')
-      .attr('stroke', 'blue')
       .attr('stroke-width', 2);
 
     // Calculate midpoint for the distance label
@@ -196,7 +193,7 @@ export default function Home() {
       .attr('y', midY - 5) // Position slightly above the midpoint
       .attr('class', 'distance-label')
       .attr('text-anchor', 'middle')
-      .attr('fill', 'red')
+      .attr('stroke', 'blue')
       .text(`Dist: ${dist}`);
 
     return group;
@@ -248,7 +245,7 @@ export default function Home() {
 
     if (pointsX.length <= 3) {
       const closestPair = bruteForce(pointsX);
-      const pair = drawPair(closestPair);
+      const pair = findDistance(closestPair);
       await new Promise((resolve) => setTimeout(resolve, duration));
       subproblem.remove();
       return [closestPair, pair];
@@ -308,7 +305,7 @@ export default function Home() {
     await new Promise((resolve) => setTimeout(resolve, duration));
 
     let changed = false;
-    const strip = pointsY.filter((p) => Math.abs(p.x - midPoint.x) < minDist);
+    const strip = pointsY.filter((p) => Math.abs(p.x - midPoint.x) < minDist).sort((a, b) => a.y - b.y);;
     for (let i = 0; i < strip.length; ++i) {
       for (let j = i + 1; j < strip.length && strip[j].y - strip[i].y < minDist; ++j) {
         if (distance(strip[i], strip[j]) < minDist) {
@@ -322,7 +319,7 @@ export default function Home() {
     if (changed) {
       leftLine.remove();
       rightLine.remove();
-      bestLine = drawPair(closestPair);
+      bestLine = findDistance(closestPair);
       await new Promise((resolve) => setTimeout(resolve, duration));
     }
 
@@ -335,9 +332,15 @@ export default function Home() {
   };
 
   return (
-    <div>
-      <div>
-      <input type="file" onChange={handleFileUpload} />
+    <div id="container">
+        <h1 style={{color: 'white'}}>Closest Pair of Points (Divide and Conquer)</h1>
+        <div id="buttons">
+          <div className="file-upload-container">
+        <label htmlFor="file-upload" className="custom-file-upload">
+          Choose File
+        </label>
+        <input id="file-upload" type="file" />
+        </div>
         <button onClick={clearButtonClicked}>Clear</button>
         <button onClick={runButtonClicked}>Run</button>
         <button onClick={togglePause}>{isPaused ? 'Resume' : 'Pause'}</button>

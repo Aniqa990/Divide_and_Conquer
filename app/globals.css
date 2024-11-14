@@ -5,7 +5,7 @@
   margin: 0;
 }
 
-/* globals.css */
+/*
 body {
   display: flex;
   justify-content: center;
@@ -94,7 +94,7 @@ button {
   cursor: pointer;
   transition: background-color 0.3s;
   margin: 5px;
-  justify-content: center; /* Center horizontally */
+  justify-content: center; -- Center horizontally 
   align-items: center;
   font-family: "Montserrat", sans-serif;
   text-transform: uppercase;
@@ -116,4 +116,4 @@ button:hover {
 a {
   text-decoration: none;
   color: #32a8a4;
-}
+}*/
