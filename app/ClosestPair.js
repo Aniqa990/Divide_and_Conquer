@@ -3,12 +3,11 @@ import { useEffect, useRef, useState } from 'react';
 import styles from '../app/ClosestPair.css';
 import * as d3 from 'd3';
 
-const duration = 1200;
+const duration = 1500;
 
 export default function Home() {
   const [points, setPoints] = useState([]);
   const svgRef = useRef(null);
-  const [isPaused, setIsPaused] = useState(false);
   
   const svgWidth = 800;
   const svgHeight = 600;
@@ -45,10 +44,7 @@ export default function Home() {
     setPoints([]);
     d3.select(svgRef.current).selectAll("*").remove();
   };
-
-  const togglePause = () => {
-    setIsPaused(!isPaused);
-  };
+  
 
   const drawCoordinates = (points) => {
     const svg = d3.select(svgRef.current);
@@ -343,7 +339,6 @@ export default function Home() {
         </div>
         <button onClick={clearButtonClicked}>Clear</button>
         <button onClick={runButtonClicked}>Run</button>
-        <button onClick={togglePause}>{isPaused ? 'Resume' : 'Pause'}</button>
       </div>
       <div id="tooltip" style={{ position: 'absolute', background: 'lightgray', padding: '5px', opacity: 0 }}></div>
       <svg ref={svgRef} width={svgWidth} height={svgHeight}></svg>
